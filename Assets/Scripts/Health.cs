@@ -1,20 +1,48 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 public class Health : MonoBehaviour
 {
-    public float maxHealth = 100f;
-    public float currentHealth;
+    public int maxHealth = 100;
+    public int currentHealth;
+
+    private Slider healthBar;
 
     void Start()
     {
-        currentHealth = maxHealth;
+        // Restore health from GameManager or default to maxHealth
+        currentHealth = GameManager.instance != null ? GameManager.instance.playerCurrentHealth : maxHealth;
+
+        // Debug for initialization
+        Debug.Log($"{name} initialized with {currentHealth}/{maxHealth} health.");
     }
 
-    public void TakeDamage(float damage)
+    public void SetHealthBar(Slider slider)
     {
-        currentHealth -= damage;
-        if (currentHealth < 0) currentHealth = 0;
-        Debug.Log(name + " Health: " + currentHealth);
+        healthBar = slider;
+        if (healthBar != null)
+        {
+            healthBar.maxValue = maxHealth;
+            healthBar.value = currentHealth; // Set the slider value to match current health
+        }
+    }
+
+    public void TakeDamage(int damage)
+    {
+        
+            currentHealth -= damage;
+            currentHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
+
+            if (healthBar != null)
+            {
+                healthBar.value = currentHealth; // Update the slider dynamically
+            }
+
+        // Update GameManager health
+        if (GameManager.instance != null)
+        {
+            GameManager.instance.playerCurrentHealth = currentHealth;
+        }
 
         if (currentHealth <= 0)
         {
@@ -24,7 +52,7 @@ public class Health : MonoBehaviour
 
     private void Die()
     {
-        Debug.Log(name + " has died!");
-        // Add death logic here
+        Debug.Log($"{name} has died!");
+        Destroy(gameObject);
     }
 }

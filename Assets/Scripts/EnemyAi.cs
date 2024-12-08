@@ -44,9 +44,10 @@ public class EnemyAI : MonoBehaviour
         }
 
         Debug.Log("Player detected! Starting combat...");
-        combatSystem.StartCombat(gameObject, player.gameObject); // Pass the enemy and player to the combat system
+        GameManager.instance.EnterCombat(GameObject.FindGameObjectWithTag("Player"));
 
-        // Optional: Disable this script during combat to prevent re-triggering
+        // Disable enemy AI to prevent multiple triggers
         this.enabled = false;
+        gameObject.SetActive(false);
     }
 }

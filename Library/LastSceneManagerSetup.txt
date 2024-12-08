@@ -1,5 +1,5 @@
 sceneSetups:
-- path: Assets/Scenes/Abyss Crawler.unity
+- path: Assets/Scenes/AbyssCrawler.unity
   isLoaded: 1
   isActive: 1
   isSubScene: 0

@@ -1,28 +1,57 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class TurnBasedCombatSystem : MonoBehaviour
 {
-    public CombatUIManager combatUIManager;
+    public enum TurnState { PlayerTurn, EnemyTurn, CombatEnd }
+    private TurnState currentTurn;
 
     private GameObject player;
     private GameObject enemy;
 
-    public enum TurnState { PlayerTurn, EnemyTurn, CombatEnd }
-    private TurnState currentTurn;
+
+    private void Start()
+    {
+        // Ensure combat only starts in the combat scene
+        if (SceneManager.GetActiveScene().name != GameManager.instance.TurnBasedBattleScene)
+        {
+            Debug.Log("Not in the combat scene. Combat system will not initialize.");
+            enabled = false;
+            return;
+        }
+
+        Debug.Log("Combat scene loaded. Initializing combat...");
+
+        // Find Player and Enemy
+        player = GameObject.FindGameObjectWithTag("Player");
+        enemy = GameObject.FindGameObjectWithTag("Enemy");
+
+        if (player != null && enemy != null)
+        {
+            StartCombat(enemy, player);
+        }
+        else
+        {
+            Debug.LogError("Player or Enemy not found in the Combat Scene!");
+        }
+    }
 
     public void StartCombat(GameObject enemyObj, GameObject playerObj)
     {
         player = playerObj;
         enemy = enemyObj;
 
+        if (player == null)
+        {
+            Debug.LogError("Player is null at the start of combat.");
+        }
+        if (enemy == null)
+        {
+            Debug.LogError("Enemy is null at the start of combat.");
+        }
+
         Debug.Log("Combat started!");
-
-        Health playerHealth = player.GetComponent<Health>();
-        Health enemyHealth = enemy.GetComponent<Health>();
-
-        combatUIManager.UpdateHealthBar(combatUIManager.PlayerHealthBar, playerHealth.currentHealth, playerHealth.maxHealth);
-
         currentTurn = TurnState.PlayerTurn;
         StartCoroutine(CombatLoop());
     }
@@ -31,80 +60,126 @@ public class TurnBasedCombatSystem : MonoBehaviour
     {
         while (currentTurn != TurnState.CombatEnd)
         {
+            if (player == null || enemy == null)
+            {
+                Debug.LogWarning("Player or Enemy is null. Ending combat.");
+                currentTurn = TurnState.CombatEnd;
+                break;
+            }
+
             switch (currentTurn)
             {
                 case TurnState.PlayerTurn:
                     Debug.Log("Player's Turn");
-                    //combatUIManager.ShowActionMenu();
-                    yield return new WaitUntil(() => PlayerActionSelected());
-                    //combatUIManager.HideActionMenu();
-
-                    DealDamage(enemy, 10);
-
-                    if (CheckCombatEnd()) break;
-
+                    yield return PlayerTurn();
+                    if (enemy == null || enemy.GetComponent<Health>().currentHealth <= 0)
+                    {
+                        EndCombat();
+                        yield break;
+                    }
                     currentTurn = TurnState.EnemyTurn;
                     break;
 
                 case TurnState.EnemyTurn:
                     Debug.Log("Enemy's Turn");
                     yield return EnemyTurn();
-
-                    combatUIManager.UpdateHealthBar(combatUIManager.PlayerHealthBar, player.GetComponent<Health>().currentHealth, player.GetComponent<Health>().maxHealth);
-
-                    if (CheckCombatEnd()) break;
-
+                    if (player.GetComponent<Health>().currentHealth <= 0)
+                    {
+                        EndCombat();
+                        yield break;
+                    }
                     currentTurn = TurnState.PlayerTurn;
                     break;
             }
         }
+    }
+    private IEnumerator PlayerTurn()
+    {
+        Debug.Log("Player's Turn. Waiting for action...");
+        bool actionSelected = false;
 
-        EndCombat();
+        // Wait for player input
+        while (!actionSelected)
+        {
+            if (Input.GetKeyDown(KeyCode.A)) // Example: Attack
+            {
+                Debug.Log("Player chose to attack!");
+                DealDamage(enemy, 10);
+                actionSelected = true;
+            }
+            else if (Input.GetKeyDown(KeyCode.D)) // Example: Defend
+            {
+                Debug.Log("Player chose to defend!");
+                // Implement defend logic here
+                actionSelected = true;
+            }
+
+            yield return null; // Wait until the next frame
+        }
+
+        Debug.Log("Player turn finished.");
+        yield break;
     }
 
     private IEnumerator EnemyTurn()
     {
-        yield return new WaitForSeconds(1);
-        Debug.Log("Enemy attacks player!");
-        DealDamage(player, 5);
-    }
+        Debug.Log("Enemy's Turn.");
+        yield return new WaitForSeconds(1); // Simulate thinking time
 
-    private bool PlayerActionSelected()
-    {
-        return Input.GetKeyDown(KeyCode.A); // Replace with UI logic
+        // Enemy attacks the player
+        DealDamage(player, 5);
+
+        Debug.Log("Enemy turn finished.");
+        yield break;
     }
 
     private void DealDamage(GameObject target, int damage)
     {
+        if (target == null)
+        {
+            Debug.LogWarning("Target is null or has been destroyed. Skipping damage.");
+            return;
+        }
+
         Health targetHealth = target.GetComponent<Health>();
         if (targetHealth != null)
         {
             targetHealth.TakeDamage(damage);
         }
-    }
-
-    private bool CheckCombatEnd()
-    {
-        Health playerHealth = player.GetComponent<Health>();
-        Health enemyHealth = enemy.GetComponent<Health>();
-
-        if (playerHealth.currentHealth <= 0 || enemyHealth.currentHealth <= 0)
+        else
         {
-            currentTurn = TurnState.CombatEnd;
-            return true;
+            Debug.LogError("Target does not have a Health component.");
         }
-        return false;
     }
 
+    public void OnTargetDeath(GameObject target)
+    {
+        if (target == enemy)
+        {
+            Debug.Log("Enemy defeated, ending combat.");
+            EndCombat();
+        }
+        else if (target == player)
+        {
+            Debug.Log("Player defeated, game over.");
+            EndCombat(); 
+        }
+    }
     private void EndCombat()
     {
         Debug.Log("Combat has ended.");
-        //combatUIManager.HideActionMenu();
+        GameManager.instance.isEnemyDefeated = true; // Mark the enemy as defeated
 
-        Player playerMovement = player.GetComponent<Player>();
-        if (playerMovement != null)
+        // Safely destroy the enemy
+        if (enemy != null)
         {
-            playerMovement.canMove = true;
+            Destroy(enemy);
+            Debug.Log("Enemy destroyed in the combat scene.");
         }
+
+        // Transition back to the main scene
+        GameManager.instance.ExitCombat(player);
     }
 }
+
+
