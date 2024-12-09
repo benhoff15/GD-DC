@@ -1,16 +1,12 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class PlayerLocation : MonoBehaviour
 {
-    void Start()
-    {
-        if (GameManager.instance != null && SceneManager.GetActiveScene().name == GameManager.instance.AbyssCrawler)
-        {
-            transform.position = GameManager.instance.playerPosition;
-        }
-    }
+    public string AbyssCrawler = "AbyssCrawler"; // Used for change scene
 
+    void ExampleMethod()
+    {
+        SceneManager.LoadScene(AbyssCrawler); //for change scene
+    }
 }

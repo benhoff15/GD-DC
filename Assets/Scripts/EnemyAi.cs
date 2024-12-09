@@ -2,10 +2,10 @@ using UnityEngine;
 
 public class EnemyAI : MonoBehaviour
 {
-    public TurnBasedCombatSystem combatSystem; // Reference to the turn-based combat system
-    public float detectionRange = 10f; // Range at which the enemy detects the player
+    public float detectionRange = 5f; // Range at which the enemy detects the player
 
     private Transform player;
+    private bool isCombatTriggered = false;
 
     void Start()
     {
@@ -17,13 +17,13 @@ public class EnemyAI : MonoBehaviour
         }
         else
         {
-            Debug.LogError("Player not found! Ensure the player GameObject has the 'Player' tag.");
+            Debug.LogError("Player not found! Ensure the Player GameObject has the 'Player' tag.");
         }
     }
 
     void Update()
     {
-        if (player == null) return;
+        if (player == null || isCombatTriggered) return;
 
         // Calculate distance to the player
         float distanceToPlayer = Vector3.Distance(transform.position, player.position);
@@ -37,17 +37,26 @@ public class EnemyAI : MonoBehaviour
 
     private void StartCombat()
     {
+        isCombatTriggered = true;
+
+        TurnBasedCombatSystem combatSystem = FindObjectOfType<TurnBasedCombatSystem>();
         if (combatSystem == null)
         {
-            Debug.LogError("CombatSystem not assigned! Assign it in the Inspector.");
+            Debug.LogError("TurnBasedCombatSystem not found in the scene!");
+            return;
+        }
+
+        GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+        if (playerObject == null)
+        {
+            Debug.LogError("Player object not found! Ensure the Player GameObject has the 'Player' tag.");
             return;
         }
 
         Debug.Log("Player detected! Starting combat...");
-        GameManager.instance.EnterCombat(GameObject.FindGameObjectWithTag("Player"));
+        combatSystem.StartCombat(gameObject, playerObject);
 
-        // Disable enemy AI to prevent multiple triggers
+        // Optional: Disable this script during combat to prevent re-triggering
         this.enabled = false;
-        gameObject.SetActive(false);
     }
 }

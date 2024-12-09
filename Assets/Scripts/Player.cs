@@ -2,29 +2,26 @@ using UnityEngine;
 
 public class Player : MonoBehaviour
 {
-    public float speed = 5f;
-    public bool canMove = true;
+    public float speed = 5f;          // Movement speed
+    public float rotationSpeed = 100f; // Rotation speed
 
     void Update()
     {
-        if (!canMove) return;
-
-        float horizontal = Input.GetAxis("Horizontal");
+        
+        float horizontal = Input.GetAxis("Horizontal"); 
         float vertical = Input.GetAxis("Vertical");
 
         Vector3 movement = new Vector3(horizontal, 0, vertical) * speed * Time.deltaTime;
-        transform.Translate(movement, Space.World);
-    }
-    void Awake()
-    {
-        GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
-        if (players.Length > 1)
-        {
-            Debug.Log("Duplicate Player detected. Destroying this instance.");
-            Destroy(gameObject);
-            return;
-        }
+        transform.Translate(movement);
 
-        DontDestroyOnLoad(gameObject);
+        // Rotation logic
+        if (Input.GetKey(KeyCode.LeftArrow)) // Rotate left
+        {
+            transform.Rotate(Vector3.up, -rotationSpeed * Time.deltaTime);
+        }
+        else if (Input.GetKey(KeyCode.RightArrow)) // Rotate right
+        {
+            transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime);
+        }
     }
 }

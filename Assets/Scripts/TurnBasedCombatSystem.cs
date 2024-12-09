@@ -1,57 +1,42 @@
 using System.Collections;
 using UnityEngine;
-using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class TurnBasedCombatSystem : MonoBehaviour
 {
-    public enum TurnState { PlayerTurn, EnemyTurn, CombatEnd }
-    private TurnState currentTurn;
+    public CombatUIManager combatUIManager;
 
     private GameObject player;
     private GameObject enemy;
 
+    public enum TurnState { PlayerTurn, EnemyTurn, CombatEnd }
+    private TurnState currentTurn;
 
-    private void Start()
-    {
-        // Ensure combat only starts in the combat scene
-        if (SceneManager.GetActiveScene().name != GameManager.instance.TurnBasedBattleScene)
-        {
-            Debug.Log("Not in the combat scene. Combat system will not initialize.");
-            enabled = false;
-            return;
-        }
-
-        Debug.Log("Combat scene loaded. Initializing combat...");
-
-        // Find Player and Enemy
-        player = GameObject.FindGameObjectWithTag("Player");
-        enemy = GameObject.FindGameObjectWithTag("Enemy");
-
-        if (player != null && enemy != null)
-        {
-            StartCombat(enemy, player);
-        }
-        else
-        {
-            Debug.LogError("Player or Enemy not found in the Combat Scene!");
-        }
-    }
+    private int manaCooldown = 0; // Cooldown for Mana Magic attack
 
     public void StartCombat(GameObject enemyObj, GameObject playerObj)
     {
         player = playerObj;
         enemy = enemyObj;
 
-        if (player == null)
+        Debug.Log("Combat started!");
+        combatUIManager.ClearCombatLog();
+        combatUIManager.AddToCombatLog($"{enemy.name} has appeared!");
+
+        Health playerHealth = player.GetComponent<Health>();
+        Health enemyHealth = enemy.GetComponent<Health>();
+
+        combatUIManager.UpdateHealthBar(combatUIManager.PlayerHealthBar, playerHealth.currentHealth, playerHealth.maxHealth);
+
+        Image enemyHealthBar = FindEnemyHealthBar(enemy);
+        if (enemyHealthBar != null)
         {
-            Debug.LogError("Player is null at the start of combat.");
-        }
-        if (enemy == null)
-        {
-            Debug.LogError("Enemy is null at the start of combat.");
+            combatUIManager.SetEnemyHealthBar(enemyHealthBar);
         }
 
-        Debug.Log("Combat started!");
+        combatUIManager.StartClearingCombatLog(7f);
+        combatUIManager.ShowCombatUI();
+
         currentTurn = TurnState.PlayerTurn;
         StartCoroutine(CombatLoop());
     }
@@ -60,91 +45,168 @@ public class TurnBasedCombatSystem : MonoBehaviour
     {
         while (currentTurn != TurnState.CombatEnd)
         {
-            if (player == null || enemy == null)
-            {
-                Debug.LogWarning("Player or Enemy is null. Ending combat.");
-                currentTurn = TurnState.CombatEnd;
-                break;
-            }
-
             switch (currentTurn)
             {
                 case TurnState.PlayerTurn:
                     Debug.Log("Player's Turn");
-                    yield return PlayerTurn();
-                    if (enemy == null || enemy.GetComponent<Health>().currentHealth <= 0)
-                    {
-                        EndCombat();
-                        yield break;
-                    }
-                    currentTurn = TurnState.EnemyTurn;
+                    combatUIManager.SetButtonsInteractable(true); 
+                    yield return new WaitUntil(() => currentTurn == TurnState.EnemyTurn);
+                    combatUIManager.SetButtonsInteractable(false); 
                     break;
 
                 case TurnState.EnemyTurn:
                     Debug.Log("Enemy's Turn");
                     yield return EnemyTurn();
-                    if (player.GetComponent<Health>().currentHealth <= 0)
-                    {
-                        EndCombat();
-                        yield break;
-                    }
+
+                    if (CheckCombatEnd()) yield break; 
+
                     currentTurn = TurnState.PlayerTurn;
                     break;
             }
+
+            if (manaCooldown > 0)
+            {
+                manaCooldown--;
+                Debug.Log($"Mana Magic cooldown reduced to {manaCooldown}");
+            }
         }
+
+        EndCombat();
     }
-    private IEnumerator PlayerTurn()
+
+    private Image FindEnemyHealthBar(GameObject enemy)
     {
-        Debug.Log("Player's Turn. Waiting for action...");
-        bool actionSelected = false;
+        string enemyName = enemy.name; 
+        GameObject healthBarContainer = GameObject.Find($"{enemyName}_Healthbar");
 
-        // Wait for player input
-        while (!actionSelected)
+        if (healthBarContainer == null)
         {
-            if (Input.GetKeyDown(KeyCode.A)) // Example: Attack
-            {
-                Debug.Log("Player chose to attack!");
-                DealDamage(enemy, 10);
-                actionSelected = true;
-            }
-            else if (Input.GetKeyDown(KeyCode.D)) // Example: Defend
-            {
-                Debug.Log("Player chose to defend!");
-                // Implement defend logic here
-                actionSelected = true;
-            }
-
-            yield return null; // Wait until the next frame
+            Debug.LogError($"Health bar container '{enemyName}_Healthbar' not found!");
+            return null;
         }
 
-        Debug.Log("Player turn finished.");
-        yield break;
+        Image healthBar = healthBarContainer.transform.Find("Health " + enemyName)?.GetComponent<Image>();
+
+        if (healthBar == null)
+        {
+            Debug.LogError($"Health bar for '{enemyName}' not found!");
+        }
+
+        return healthBar;
+    }
+
+    public void PlayerAttack(string attackType)
+    {
+        if (currentTurn != TurnState.PlayerTurn) return; 
+
+        if (enemy == null)
+        {
+            Debug.LogWarning("Cannot attack. Enemy is null or already destroyed.");
+            currentTurn = TurnState.CombatEnd; // End combat if enemy is destroyed
+            return;
+        }
+
+        switch (attackType)
+        {
+            case "SwiftStrike":
+                combatUIManager.AddToCombatLog($"Player used Swift Strike on {enemy.name}!");
+                SwiftStrike();
+                break;
+
+            case "ManaMagic":
+                if (manaCooldown > 0)
+                {
+                    combatUIManager.AddToCombatLog($"Mana Magic is on cooldown! {manaCooldown} turns remaining.");
+                    return; // Exit without performing the attack
+                }
+                combatUIManager.AddToCombatLog($"Player used Mana Magic on {enemy.name}!");
+                ManaMagic();
+                manaCooldown = 3; // Reset cooldown after use
+                break;
+
+            case "DefensiveStance":
+                combatUIManager.AddToCombatLog("Player used Defensive Stance and healed!");
+                DefensiveStance();
+                break;
+
+            default:
+                Debug.LogError($"Unknown attack type: {attackType}");
+                break;
+        }
+
+        if (CheckCombatEnd()) return; // Check if combat should end after the player's turn
+
+        currentTurn = TurnState.EnemyTurn;
     }
 
     private IEnumerator EnemyTurn()
     {
-        Debug.Log("Enemy's Turn.");
-        yield return new WaitForSeconds(1); // Simulate thinking time
+        yield return new WaitForSeconds(2);
 
-        // Enemy attacks the player
-        DealDamage(player, 5);
+        if (player == null)
+        {
+            Debug.LogWarning("Player is null or already destroyed. Ending combat.");
+            currentTurn = TurnState.CombatEnd;
+            yield break;
+        }
 
-        Debug.Log("Enemy turn finished.");
-        yield break;
+        combatUIManager.AddToCombatLog($"{enemy.name} attacks the player!");
+        DealDamage(player, 5, "EnemyAttack");
+
+        if (CheckCombatEnd()) yield break;
+        
+        currentTurn = TurnState.PlayerTurn;
     }
 
-    private void DealDamage(GameObject target, int damage)
+    private void SwiftStrike()
+    {
+        if (enemy == null)
+        {
+            Debug.LogWarning("Cannot perform Swift Strike. Enemy is null or already destroyed.");
+            return;
+        }
+
+        DealDamage(enemy, 10, "SwiftStrike");
+    }
+
+    private void ManaMagic()
+    {
+        if (enemy == null)
+        {
+            Debug.LogWarning("Cannot perform Mana Magic. Enemy is null or already destroyed.");
+            return;
+        }
+
+        DealDamage(enemy, 18, "ManaMagic");
+    }
+
+    private void DefensiveStance()
+    {
+        Heal(player, 12);
+    }
+
+    private void DealDamage(GameObject target, int damage, string attackType)
     {
         if (target == null)
         {
-            Debug.LogWarning("Target is null or has been destroyed. Skipping damage.");
+            Debug.LogWarning("Target is null or already destroyed. Skipping damage.");
             return;
         }
 
         Health targetHealth = target.GetComponent<Health>();
         if (targetHealth != null)
         {
-            targetHealth.TakeDamage(damage);
+            targetHealth.TakeDamage(damage, attackType);
+
+            
+            if (target == player)
+            {
+                combatUIManager.UpdateHealthBar(combatUIManager.PlayerHealthBar, targetHealth.currentHealth, targetHealth.maxHealth);
+            }
+            else if (target == enemy)
+            {
+                combatUIManager.UpdateHealthBar(combatUIManager.EnemyHealthBar, targetHealth.currentHealth, targetHealth.maxHealth);
+            }
         }
         else
         {
@@ -152,34 +214,61 @@ public class TurnBasedCombatSystem : MonoBehaviour
         }
     }
 
-    public void OnTargetDeath(GameObject target)
+    private void Heal(GameObject target, int amount)
     {
-        if (target == enemy)
+        Health targetHealth = target.GetComponent<Health>();
+        if (targetHealth != null)
         {
-            Debug.Log("Enemy defeated, ending combat.");
-            EndCombat();
-        }
-        else if (target == player)
-        {
-            Debug.Log("Player defeated, game over.");
-            EndCombat(); 
+            targetHealth.Heal(amount);
         }
     }
+    public void OnEnemyDeath(string enemyName)
+    {
+        combatUIManager.AddToCombatLog($"{enemyName} has been defeated!");
+        Debug.Log($"{enemyName} has been defeated!");
+    }
+
+    private bool CheckCombatEnd()
+    {
+        if (player == null || enemy == null)
+        {
+            Debug.LogWarning("Combat cannot continue as one of the entities is missing.");
+            currentTurn = TurnState.CombatEnd;
+            return true;
+        }
+
+        Health playerHealth = player.GetComponent<Health>();
+        Health enemyHealth = enemy.GetComponent<Health>();
+
+        if (playerHealth.currentHealth <= 0)
+        {
+            Debug.Log("Player has been defeated. Combat ends.");
+            currentTurn = TurnState.CombatEnd;
+            return true;
+        }
+
+        if (enemyHealth.currentHealth <= 0)
+        {
+            Debug.Log("Enemy has been defeated. Combat ends.");
+            currentTurn = TurnState.CombatEnd;
+            return true;
+        }
+
+        return false;
+    }
+
     private void EndCombat()
     {
         Debug.Log("Combat has ended.");
-        GameManager.instance.isEnemyDefeated = true; // Mark the enemy as defeated
+        combatUIManager.HideCombatUI();
 
-        // Safely destroy the enemy
+        combatUIManager.StopClearingCombatLog();
+
         if (enemy != null)
         {
             Destroy(enemy);
-            Debug.Log("Enemy destroyed in the combat scene.");
+            enemy = null; // Clear reference to avoid further access
+            Debug.Log("Enemy destroyed and reference cleared.");
         }
-
-        // Transition back to the main scene
-        GameManager.instance.ExitCombat(player);
     }
 }
-
-

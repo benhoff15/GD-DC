@@ -3,11 +3,11 @@ using UnityEngine.UI;
 
 public class CombatSceneInitializer : MonoBehaviour
 {
-    public GameObject player; // Assign the player object if it’s not persistent
+   //ignore this script, was used for a deleted idea
+    public GameObject player; 
 
     private void Start()
     {
-        // Ensure the player exists
         if (player == null)
         {
             player = GameObject.FindGameObjectWithTag("Player");
@@ -26,7 +26,7 @@ public class CombatSceneInitializer : MonoBehaviour
     private void InitializeHealthBar(GameObject player)
     {
         Health playerHealth = player.GetComponent<Health>();
-        GameObject healthBarObject = GameObject.Find("PlayerHealthBar"); // Ensure this matches your object's name
+        GameObject healthBarObject = GameObject.Find("PlayerHealthBar"); 
         if (healthBarObject != null)
         {
             Slider healthBar = healthBarObject.GetComponent<Slider>();
@@ -35,7 +35,6 @@ public class CombatSceneInitializer : MonoBehaviour
                 healthBar.maxValue = playerHealth.maxHealth;
                 healthBar.value = playerHealth.currentHealth;
 
-                playerHealth.SetHealthBar(healthBar); // Link the slider to the player's health
             }
         }
         else
