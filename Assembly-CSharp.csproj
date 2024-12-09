@@ -62,6 +62,7 @@
   <ItemGroup>
     <Compile Include="Assets\Scripts\EnemyAi.cs" />
     <Compile Include="Assets\Scripts\CombatSceneInitializer.cs" />
+    <Compile Include="Assets\Scripts\ChestInteraction.cs" />
     <Compile Include="Assets\Scripts\HealthBarController.cs" />
     <Compile Include="Assets\Scripts\PlayerLocation.cs" />
     <Compile Include="Assets\Sprites\test.cs" />
