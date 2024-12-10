@@ -18,6 +18,8 @@ public class TurnBasedCombatSystem : MonoBehaviour
     {
         player = playerObj;
         enemy = enemyObj;
+        manaCooldown = 0;
+        currentTurn = TurnState.PlayerTurn;
 
         Debug.Log("Combat started!");
         combatUIManager.ClearCombatLog();
@@ -34,6 +36,24 @@ public class TurnBasedCombatSystem : MonoBehaviour
             combatUIManager.SetEnemyHealthBar(enemyHealthBar);
         }
 
+        AudioManager audioManager = FindObjectOfType<AudioManager>();
+        if (enemy.name == "Enemy 1")
+        {
+            audioManager.PlayCombatMusicEnemy1();
+        }
+        if (enemy.name == "Enemy 2")
+        {
+            audioManager.PlayCombatMusicEnemy2();
+        }
+        if (enemy.name == "Wizard1")
+        {
+            audioManager.PlayCombatMusicWizard1();
+        }
+        else if (enemy.name == "Wizard2")
+        {
+            audioManager.PlayCombatMusicWizard2();
+        }
+
         combatUIManager.StartClearingCombatLog(7f);
         combatUIManager.ShowCombatUI();
 
@@ -45,20 +65,21 @@ public class TurnBasedCombatSystem : MonoBehaviour
     {
         while (currentTurn != TurnState.CombatEnd)
         {
+            Debug.Log($"Current turn: {currentTurn}");
             switch (currentTurn)
             {
                 case TurnState.PlayerTurn:
                     Debug.Log("Player's Turn");
-                    combatUIManager.SetButtonsInteractable(true); 
+                    combatUIManager.SetButtonsInteractable(true);
                     yield return new WaitUntil(() => currentTurn == TurnState.EnemyTurn);
-                    combatUIManager.SetButtonsInteractable(false); 
+                    combatUIManager.SetButtonsInteractable(false);
                     break;
 
                 case TurnState.EnemyTurn:
                     Debug.Log("Enemy's Turn");
                     yield return EnemyTurn();
 
-                    if (CheckCombatEnd()) yield break; 
+                    if (CheckCombatEnd()) yield break;
 
                     currentTurn = TurnState.PlayerTurn;
                     break;
@@ -76,7 +97,7 @@ public class TurnBasedCombatSystem : MonoBehaviour
 
     private Image FindEnemyHealthBar(GameObject enemy)
     {
-        string enemyName = enemy.name; 
+        string enemyName = enemy.name;
         GameObject healthBarContainer = GameObject.Find($"{enemyName}_Healthbar");
 
         if (healthBarContainer == null)
@@ -97,7 +118,7 @@ public class TurnBasedCombatSystem : MonoBehaviour
 
     public void PlayerAttack(string attackType)
     {
-        if (currentTurn != TurnState.PlayerTurn) return; 
+        if (currentTurn != TurnState.PlayerTurn) return;
 
         if (enemy == null)
         {
@@ -151,10 +172,11 @@ public class TurnBasedCombatSystem : MonoBehaviour
         }
 
         combatUIManager.AddToCombatLog($"{enemy.name} attacks the player!");
-        DealDamage(player, 5, "EnemyAttack");
+        DealDamage(player, 3, "EnemyAttack");
+        Debug.Log($"Turn transitioning to: {currentTurn}");
 
         if (CheckCombatEnd()) yield break;
-        
+
         currentTurn = TurnState.PlayerTurn;
     }
 
@@ -177,12 +199,12 @@ public class TurnBasedCombatSystem : MonoBehaviour
             return;
         }
 
-        DealDamage(enemy, 18, "ManaMagic");
+        DealDamage(enemy, 16, "ManaMagic");
     }
 
     private void DefensiveStance()
     {
-        Heal(player, 12);
+        Heal(player, 14);
     }
 
     private void DealDamage(GameObject target, int damage, string attackType)
@@ -198,7 +220,7 @@ public class TurnBasedCombatSystem : MonoBehaviour
         {
             targetHealth.TakeDamage(damage, attackType);
 
-            
+
             if (target == player)
             {
                 combatUIManager.UpdateHealthBar(combatUIManager.PlayerHealthBar, targetHealth.currentHealth, targetHealth.maxHealth);
@@ -264,10 +286,13 @@ public class TurnBasedCombatSystem : MonoBehaviour
 
         combatUIManager.StopClearingCombatLog();
 
+        AudioManager audioManager = FindObjectOfType<AudioManager>();
+        audioManager.PlayMainSceneMusic();
+
         if (enemy != null)
         {
             Destroy(enemy);
-            enemy = null; // Clear reference to avoid further access
+            enemy = null;
             Debug.Log("Enemy destroyed and reference cleared.");
         }
     }

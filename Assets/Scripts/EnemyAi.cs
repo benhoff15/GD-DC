@@ -56,7 +56,7 @@ public class EnemyAI : MonoBehaviour
         Debug.Log("Player detected! Starting combat...");
         combatSystem.StartCombat(gameObject, playerObject);
 
-        // Optional: Disable this script during combat to prevent re-triggering
+        
         this.enabled = false;
     }
 }
