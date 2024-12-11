@@ -64,11 +64,13 @@
     <Compile Include="Assets\Scripts\CombatSceneInitializer.cs" />
     <Compile Include="Assets\Scripts\ChestInteraction.cs" />
     <Compile Include="Assets\Scripts\HealthBarController.cs" />
+    <Compile Include="Assets\Scripts\MainMenu.cs" />
     <Compile Include="Assets\Scripts\PlayerLocation.cs" />
     <Compile Include="Assets\Sprites\test.cs" />
     <Compile Include="Assets\Scripts\Player.cs" />
     <Compile Include="Assets\Scripts\GameManager.cs" />
     <Compile Include="Assets\Scripts\CameraFollow.cs" />
+    <Compile Include="Assets\Scripts\PauseMenu.cs" />
     <Compile Include="Assets\Scripts\Health.cs" />
     <Compile Include="Assets\Scripts\AudioManager.cs" />
     <Compile Include="Assets\Scripts\TurnBasedCombatSystem.cs" />

@@ -34,5 +34,6 @@ public class ChestInteraction : MonoBehaviour
     {
         // Restart the current scene
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        combatUIManager.AddToCombatLog("You Won! Restarting the game...");
     }
 }

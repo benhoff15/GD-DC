@@ -361,6 +361,8 @@
 "Assets/Scripts/GameManager.cs"
 "Assets/Scripts/Health.cs"
 "Assets/Scripts/HealthBarController.cs"
+"Assets/Scripts/MainMenu.cs"
+"Assets/Scripts/PauseMenu.cs"
 "Assets/Scripts/Player.cs"
 "Assets/Scripts/PlayerLocation.cs"
 "Assets/Scripts/TurnBasedCombatSystem.cs"
